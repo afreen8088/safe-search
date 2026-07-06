@@ -5,6 +5,9 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.exceptions import InvalidSignature
 
 
+RSA_PSS_SALT_LENGTH = 32
+
+
 # --------------------------------------------------
 # Key Generation
 # --------------------------------------------------
@@ -73,7 +76,7 @@ def generate_trapdoor_private(value: str, private_pem: str):
         keyword_hash.encode(),
         padding.PSS(
             mgf=padding.MGF1(hashes.SHA256()),
-            salt_length=padding.PSS.MAX_LENGTH
+            salt_length=RSA_PSS_SALT_LENGTH
         ),
         hashes.SHA256()
     )
@@ -101,7 +104,7 @@ def verify_signature(keyword_hash: str, signature_hex: str, public_pem: str) -> 
             keyword_hash.encode(),
             padding.PSS(
                 mgf=padding.MGF1(hashes.SHA256()),
-                salt_length=padding.PSS.MAX_LENGTH
+                salt_length=RSA_PSS_SALT_LENGTH
             ),
             hashes.SHA256()
         )

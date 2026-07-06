@@ -57,6 +57,33 @@ async function importPrivateKey(pemKey) {
   );
 }
 
+// ---------- 3b️⃣ Import RSA Public Key (SPKI) ----------
+async function importPublicKey(pemKey) {
+  const base64 = pemKey
+    .replace(/-----BEGIN PUBLIC KEY-----/, "")
+    .replace(/-----END PUBLIC KEY-----/, "")
+    .replace(/\s/g, "");
+
+  const binary = atob(base64);
+  const buffer = new ArrayBuffer(binary.length);
+  const view = new Uint8Array(buffer);
+
+  for (let i = 0; i < binary.length; i++) {
+    view[i] = binary.charCodeAt(i);
+  }
+
+  return await crypto.subtle.importKey(
+    "spki",
+    buffer,
+    {
+      name: "RSA-PSS",
+      hash: "SHA-256"
+    },
+    false,
+    ["verify"]
+  );
+}
+
 // ---------- 4️⃣ Sign Hash using RSA-PSS ----------
 export async function signHashHex(hashHex, pemPrivateKey) {
   const privateKey = await importPrivateKey(pemPrivateKey);
@@ -74,4 +101,21 @@ export async function signHashHex(hashHex, pemPrivateKey) {
   );
 
   return bufferToHex(signatureBuffer);
+}
+
+// ---------- 5️⃣ Verify Signature using RSA-PSS ----------
+export async function verifySignatureHex(hashHex, signatureHex, pemPublicKey) {
+  const publicKey = await importPublicKey(pemPublicKey);
+  const encoder = new TextEncoder();
+  const data = encoder.encode(hashHex);
+
+  return await crypto.subtle.verify(
+    {
+      name: "RSA-PSS",
+      saltLength: 32
+    },
+    publicKey,
+    Uint8Array.from(signatureHex.match(/.{1,2}/g) || [], (byte) => parseInt(byte, 16)),
+    data
+  );
 }

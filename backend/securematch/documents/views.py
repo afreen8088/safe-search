@@ -1,4 +1,5 @@
 import time
+import hashlib
 from datetime import timedelta
 from django.utils import timezone
 from django.db.models import Avg, Count
@@ -184,6 +185,7 @@ class ExternalSearchView(APIView):
         total_start = time.perf_counter()
 
         auditor_id = request.data.get("auditor_id")
+        request_key_version = request.data.get("key_version")
         keyword_hash = request.data.get("keyword_hash")
         signature = request.data.get("signature")
 
@@ -199,6 +201,27 @@ class ExternalSearchView(APIView):
             return Response(
                 error_response("AUDITOR_NOT_FOUND", "Auditor not found"),
                 status=status.HTTP_404_NOT_FOUND
+            )
+
+        current_key_version = getattr(auditor, "key_version", 1)
+        if request_key_version is not None and str(request_key_version) != str(current_key_version):
+            ExternalSearchAudit.objects.create(
+                auditor=auditor,
+                keyword_hash=keyword_hash,
+                total_matches=0,
+                returned_count=0,
+                truncated=False,
+                execution_time_ms=round(
+                    (time.perf_counter() - total_start) * 1000, 2
+                ),
+                success=False,
+                failure_reason="KEY_VERSION_MISMATCH",
+                key_version=current_key_version
+            )
+
+            return Response(
+                error_response("KEY_VERSION_MISMATCH", "Auditor key version mismatch"),
+                status=status.HTTP_403_FORBIDDEN
             )
 
         # Signature Verification
@@ -221,6 +244,7 @@ class ExternalSearchView(APIView):
                     (time.perf_counter() - total_start) * 1000, 2
                 ),
                 success=False,
+                failure_reason="INVALID_SIGNATURE",
                 key_version=getattr(auditor, "key_version", 1)
             )
 
@@ -333,7 +357,50 @@ class RotateAuditorKeyView(APIView):
             ),
             status=status.HTTP_200_OK
         )
-    
+
+
+class VerifyAuditorCredentialsView(APIView):
+
+    def post(self, request):
+        auditor_id = request.data.get("auditor_id")
+        signature = request.data.get("signature")
+
+        if not auditor_id or not signature:
+            return Response(
+                error_response("MISSING_FIELDS", "auditor_id and signature required"),
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            auditor = Auditor.objects.get(id=auditor_id)
+        except Auditor.DoesNotExist:
+            return Response(
+                error_response("AUDITOR_NOT_FOUND", "Auditor not found"),
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        probe = f"auditor-probe:{auditor.id}"
+        probe_hash = hashlib.sha256(probe.encode()).hexdigest()
+        is_valid = verify_signature(probe_hash, signature, auditor.public_key)
+
+        if not is_valid:
+            return Response(
+                error_response("INVALID_SIGNATURE", "Private key does not match selected auditor"),
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        return Response(
+            success_response(
+                data={
+                    "auditor_id": auditor.id,
+                    "name": auditor.name,
+                    "active_key_version": auditor.key_version,
+                    "created_at": auditor.created_at.isoformat()
+                }
+            ),
+            status=status.HTTP_200_OK
+        )
+
 class AuditorLogsView(APIView):
 
     def get(self, request, auditor_id):
@@ -411,6 +478,7 @@ class InternalMetricsView(APIView):
                 {
                     "auditor_id": a.id,
                     "name": a.name,
+                    "public_key": a.public_key,
                     "active_key_version": a.key_version,
                     "created_at": a.created_at.isoformat()
                 }
