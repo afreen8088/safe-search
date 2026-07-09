@@ -641,3 +641,40 @@ class DeleteAuditorView(APIView):
             ),
             status=status.HTTP_200_OK
         )
+
+
+class HealthCheckView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        from django.db import connection
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+            db_status = "up"
+            db_healthy = True
+        except Exception as e:
+            db_status = "down"
+            db_healthy = False
+            error_details = str(e)
+
+        if db_healthy:
+            return Response(
+                success_response(
+                    data={
+                        "status": "healthy",
+                        "database": db_status
+                    }
+                ),
+                status=status.HTTP_200_OK
+            )
+        else:
+            return Response(
+                error_response(
+                    code="DATABASE_UNAVAILABLE",
+                    message="Database connection failed",
+                    details={"error": error_details}
+                ),
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+

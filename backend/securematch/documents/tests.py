@@ -182,3 +182,14 @@ class RBACTests(TestCase):
         self.assert_allowed(self.compliance_officer, "get", url)
         self.assert_allowed(self.external_auditor, "get", url)
         self.assert_allowed(self.read_only_analyst, "get", url)
+
+    # 11. Health Check
+    def test_health_check(self):
+        url = "/api/health/"
+        self.client.force_authenticate(user=None)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], "success")
+        self.assertEqual(response.data["data"]["status"], "healthy")
+        self.assertEqual(response.data["data"]["database"], "up")
+

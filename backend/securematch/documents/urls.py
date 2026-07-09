@@ -10,9 +10,11 @@ from .views import (
     ExternalMetricsView,
     CreateAuditorView,
     DeleteAuditorView,
+    HealthCheckView,
 )
 
 urlpatterns = [
+    path("health/", HealthCheckView.as_view()),
     path("upload/", UploadDocumentView.as_view()),
     path("search/internal/", InternalSearchView.as_view()),
     path("search/external/", ExternalSearchView.as_view()),
@@ -25,3 +27,4 @@ urlpatterns = [
     path("auditor/create/", CreateAuditorView.as_view()),
     path("auditor/<int:auditor_id>/delete/", DeleteAuditorView.as_view()),
 ]
+
