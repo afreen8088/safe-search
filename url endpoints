@@ -1,5 +1,55 @@
-POST http://127.0.0.1:8000/api/upload/
-POST http://127.0.0.1:8000/api/search/internal/
-POST http://127.0.0.1:8000/api/search/external/
-POST http://127.0.0.1:8000/api/auditor/rotate-key/
-GET http://127.0.0.1:8000/api/auditor/<auditor_id>/logs/
+Backend URL Endpoints
+
+Base host:
+http://127.0.0.1:8000
+
+Admin
+- GET /admin/
+
+Auth
+- POST /api/auth/login/
+- POST /api/auth/logout/
+- POST /api/auth/refresh/
+- GET /api/auth/me/
+- POST /api/auth/change-password/
+
+Users
+- GET /api/users/
+- POST /api/users/
+- GET /api/users/<int:pk>/
+- PATCH /api/users/<int:pk>/
+- DELETE /api/users/<int:pk>/
+
+Documents / Search / Metrics / Auditors
+- GET /api/health/
+- HEAD /api/health/
+- POST /api/upload/
+- POST /api/search/internal/
+- POST /api/search/external/
+- POST /api/auditor/verify/
+- POST /api/auditor/rotate-key/
+- GET /api/auditor/<int:auditor_id>/logs/
+- GET /api/auditor/<int:auditor_id>/logs/download/
+- GET /api/metrics/internal/
+- HEAD /api/metrics/internal/
+- GET /api/metrics/external/
+- POST /api/auditor/create/
+- DELETE /api/auditor/<int:auditor_id>/delete/
+- GET /api/auditor/<int:auditor_id>/download/
+- GET /api/auditor/<int:id>/
+- PATCH /api/auditor/<int:id>/update/
+- PUT /api/auditor/<int:id>/update/
+- PATCH /api/auditor/<int:id>/status/
+- GET /api/auditors/
+- POST /api/auditors/
+- GET /api/auditors/<int:id>/
+- PATCH /api/auditors/<int:id>/
+- PUT /api/auditors/<int:id>/
+- DELETE /api/auditors/<int:id>/
+- POST /api/auditors/<int:id>/rotate-key/
+- GET /api/auditors/<int:id>/credentials/
+
+Notes
+- `/api/health/` and `/api/metrics/internal/` both implement `HEAD` in addition to `GET`.
+- The auditor routes are duplicated in two styles: legacy `/api/auditor/...` paths and REST-style `/api/auditors/...` paths.
+- `TokenRefreshView` is provided by `rest_framework_simplejwt`.
