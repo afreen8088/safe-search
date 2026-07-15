@@ -295,6 +295,42 @@ class AuditorActivityTimelineTests(TestCase):
         self.assertEqual(logs.count(), 1)
         self.assertTrue(logs.first().success)
 
+    def test_verify_auditor_credentials_logs(self):
+        import hashlib
+        private_key, public_key = generate_rsa_keypair()
+        auditor = Auditor.objects.create(name="HDFC", public_key=public_key, key_version=1)
+        
+        # Valid signature
+        probe = f"auditor-probe:{auditor.id}"
+        _, signature = generate_trapdoor_private(probe, private_key)
+        
+        self.client.force_authenticate(user=self.super_admin)
+        url = "/api/auditor/verify/"
+        response = self.client.post(url, {
+            "auditor_id": auditor.id,
+            "signature": signature
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Verify success log
+        logs = ExternalSearchAudit.objects.filter(auditor=auditor, event_type="CREDENTIAL_DOWNLOADED").order_by("-created_at")
+        self.assertEqual(logs.count(), 1)
+        self.assertTrue(logs.first().success)
+        self.assertEqual(logs.first().metadata.get("action"), "verify")
+        
+        # Invalid signature
+        response_fail = self.client.post(url, {
+            "auditor_id": auditor.id,
+            "signature": "a" * 128  # Invalid hex / signature
+        })
+        self.assertEqual(response_fail.status_code, status.HTTP_403_FORBIDDEN)
+        
+        # Verify failure log
+        logs = ExternalSearchAudit.objects.filter(auditor=auditor, event_type="CREDENTIAL_DOWNLOADED").order_by("-created_at")
+        self.assertEqual(logs.count(), 2)
+        self.assertFalse(logs.first().success)
+        self.assertEqual(logs.first().failure_reason, "INVALID_SIGNATURE")
+
     def test_timeline_api_ordering_and_permissions(self):
         # Create some events
         auditor = Auditor.objects.create(name="SBI", public_key="key", key_version=1)
