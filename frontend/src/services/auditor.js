@@ -5,8 +5,22 @@ function isNotFoundError(err) {
   return err?.response?.status === 404;
 }
 
+function unwrapPayload(payload) {
+  if (payload == null) {
+    return payload;
+  }
+  return payload.data ?? payload;
+}
+
 function normalizeAuditorListPayload(response, params = {}) {
-  const auditors = response?.data?.data?.auditors || response?.data?.data || [];
+  const payload = unwrapPayload(response);
+  const auditors = Array.isArray(payload?.auditors)
+    ? payload.auditors
+    : Array.isArray(payload?.results)
+      ? payload.results
+      : Array.isArray(payload)
+        ? payload
+        : [];
   const searchTerm = params.search?.toLowerCase().trim();
   const statusFilter = params.status;
 
@@ -22,16 +36,13 @@ function normalizeAuditorListPayload(response, params = {}) {
     return matchesSearch && matchesStatus;
   });
 
-  return {
-    ...response?.data,
-    data: filtered,
-  };
+  return filtered;
 }
 
 export async function getAuditors(params = {}) {
   try {
     const res = await api.get("/api/auditors/", { params });
-    return res.data;
+    return normalizeAuditorListPayload(res.data, params);
   } catch (err) {
     if (isNotFoundError(err)) {
       try {
@@ -48,12 +59,12 @@ export async function getAuditors(params = {}) {
 export async function getAuditor(id) {
   try {
     const res = await api.get(`/api/auditors/${id}/`);
-    return res.data;
+    return unwrapPayload(res.data);
   } catch (err) {
     if (isNotFoundError(err)) {
       try {
         const fallbackRes = await api.get(`/api/auditor/${id}/`);
-        return fallbackRes.data;
+        return unwrapPayload(fallbackRes.data);
       } catch (fallbackErr) {
         throw handleApiError(fallbackErr);
       }
@@ -65,12 +76,12 @@ export async function getAuditor(id) {
 export async function createAuditor(data) {
   try {
     const res = await api.post("/api/auditors/", data);
-    return res.data;
+    return unwrapPayload(res.data);
   } catch (err) {
     if (isNotFoundError(err)) {
       try {
         const fallbackRes = await api.post("/api/auditor/create/", data);
-        return fallbackRes.data;
+        return unwrapPayload(fallbackRes.data);
       } catch (fallbackErr) {
         throw handleApiError(fallbackErr);
       }
@@ -82,7 +93,7 @@ export async function createAuditor(data) {
 export async function updateAuditor(id, data) {
   try {
     const res = await api.patch(`/api/auditors/${id}/`, data);
-    return res.data;
+    return unwrapPayload(res.data);
   } catch (err) {
     if (isNotFoundError(err)) {
       try {
@@ -92,7 +103,7 @@ export async function updateAuditor(id, data) {
           ? `/api/auditor/${id}/status/`
           : `/api/auditor/${id}/update/`;
         const fallbackRes = await api.patch(fallbackUrl, data);
-        return fallbackRes.data;
+        return unwrapPayload(fallbackRes.data);
       } catch (fallbackErr) {
         throw handleApiError(fallbackErr);
       }
@@ -104,12 +115,12 @@ export async function updateAuditor(id, data) {
 export async function deleteAuditor(id) {
   try {
     const res = await api.delete(`/api/auditors/${id}/`);
-    return res.data;
+    return unwrapPayload(res.data);
   } catch (err) {
     if (isNotFoundError(err)) {
       try {
         const fallbackRes = await api.delete(`/api/auditor/${id}/delete/`);
-        return fallbackRes.data;
+        return unwrapPayload(fallbackRes.data);
       } catch (fallbackErr) {
         throw handleApiError(fallbackErr);
       }
@@ -121,14 +132,14 @@ export async function deleteAuditor(id) {
 export async function rotateKeys(id) {
   try {
     const res = await api.post(`/api/auditors/${id}/rotate-key/`);
-    return res.data;
+    return unwrapPayload(res.data);
   } catch (err) {
     if (isNotFoundError(err)) {
       try {
         const fallbackRes = await api.post("/api/auditor/rotate-key/", {
           auditor_id: id,
         });
-        return fallbackRes.data;
+        return unwrapPayload(fallbackRes.data);
       } catch (fallbackErr) {
         throw handleApiError(fallbackErr);
       }

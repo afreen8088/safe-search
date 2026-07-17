@@ -19,8 +19,8 @@ export default function useAuditors(showToast) {
       if (statusFilter) {
         params.status = statusFilter;
       }
-      const response = await auditorService.getAuditors(params);
-      setAuditors(response?.data || []);
+      const result = await auditorService.getAuditors(params);
+      setAuditors(Array.isArray(result) ? result : []);
     } catch (err) {
       console.error(err);
       setError(err);
@@ -57,8 +57,7 @@ export default function useAuditors(showToast) {
     setAuditors((prev) => [...prev, optimisticAuditor]);
 
     try {
-      const response = await auditorService.createAuditor(data);
-      const newAuditor = response?.data;
+      const newAuditor = await auditorService.createAuditor(data);
       if (newAuditor) {
         const formattedAuditor = {
           id: newAuditor.auditor_id || newAuditor.id,
@@ -76,7 +75,7 @@ export default function useAuditors(showToast) {
           prev.map((aud) => (aud.id === tempId ? formattedAuditor : aud))
         );
         showToast?.(`Auditor ${data.name} created successfully!`, "success");
-        return response; // Return response containing keys and temp password
+        return newAuditor;
       }
     } catch (err) {
       // Rollback
@@ -96,6 +95,11 @@ export default function useAuditors(showToast) {
 
     try {
       const response = await auditorService.updateAuditor(id, data);
+      if (response) {
+        setAuditors((prev) =>
+          prev.map((aud) => (aud.id === id ? { ...aud, ...response } : aud))
+        );
+      }
       showToast?.("Auditor profile updated", "success");
       return response;
     } catch (err) {
@@ -138,7 +142,7 @@ export default function useAuditors(showToast) {
       const response = await auditorService.rotateKeys(id);
       showToast?.("Auditor key pair rotated successfully", "success");
       
-      const rotatedData = response?.data;
+      const rotatedData = response;
       if (rotatedData) {
         setAuditors((prev) =>
           prev.map((aud) =>

@@ -86,7 +86,7 @@ export default function Auditors({ showToast }) {
       try {
         setActionId(auditor.id);
         const res = await rotateKeys(auditor.id);
-        const creds = res?.data;
+        const creds = res;
         if (creds?.new_private_key) {
           setRotatedKey(creds.new_private_key);
           setRotatedAuditorName(auditor.name);
@@ -114,7 +114,7 @@ export default function Auditors({ showToast }) {
     setLoadingLogs(true);
     try {
       const res = await getAuditorLogs(auditor.id);
-      setLogs(res?.data?.logs || []);
+      setLogs(res?.data?.logs || res?.logs || []);
     } catch (err) {
       console.error(err);
       showToast?.("Failed to fetch auditor search logs", "error");

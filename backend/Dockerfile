@@ -21,6 +21,8 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # Copy the rest of the backend code
 COPY . /app/
 
+RUN chmod +x /app/entrypoint.sh
+
 # The Django app is inside securematch/ directory
 WORKDIR /app/securematch
 
@@ -30,5 +32,5 @@ RUN python manage.py collectstatic --noinput
 # Expose the port the app runs on
 EXPOSE 8000
 
-# Run the application
-CMD ["gunicorn", "securematch.wsgi:application", "--bind", "0.0.0.0:8000"]
+# Run migrations before starting the application
+CMD ["/app/entrypoint.sh"]

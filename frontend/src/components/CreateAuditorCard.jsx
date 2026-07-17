@@ -36,7 +36,7 @@ export default function CreateAuditorCard({ createAuditor, showToast }) {
         status: "ACTIVE"
       });
 
-      const creds = res?.data;
+      const creds = res;
       if (creds) {
         setPrivateKey(creds.private_key);
         setTempPassword(creds.temporary_password || "");
